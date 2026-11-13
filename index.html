@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>QR簡易レジアプリ（売上管理・CSV出力対応）</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    :root {
+      --primary: #007AFF;
+      --success: #34C759;
+      --warning: #FF9500;
+      --danger: #FF3B30;
+      --bg: #F2F2F7;
+      --card: #FFFFFF;
+      --text: #1C1C1E;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        grid-template-columns: 340px 1fr;
+        align-items: start;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 16px;
+    }
+
+    #camera-wrapper {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+      border: 4px solid transparent;
+      transition: border-color 0.2s ease;
+    }
+
+    #camera-wrapper.scan-flash {
+      border-color: var(--success);
+    }
+
+    #camera-wrapper.pay-flash {
+      border-color: var(--warning);
+    }
+
+    #reader {
+      width: 100%;
+      min-height: 240px;
+    }
+
+    #toast {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(52, 199, 89, 0.95);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 10;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+
+    .camera-controls {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      opacity: 0.7;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      flex: 1;
+    }
+
+    .btn-stop {
+      background: #8E8E93;
+      color: #fff;
+      display: none;
+    }
+
+    .btn-clear {
+      background: #E5E5EA;
+      color: var(--danger);
+      font-size: 0.9rem;
+      padding: 8px 12px;
+    }
+
+    .btn-checkout {
+      background: var(--success);
+      color: #fff;
+      width: 100%;
+      font-size: 1.15rem;
+      padding: 14px;
+      margin-top: 12px;
+      box-shadow: 0 3px 8px rgba(52, 199, 89, 0.3);
+    }
+
+    .btn-csv {
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.9rem;
+      padding: 8px 14px;
+    }
+
+    .total-box {
+      background: #1C1C1E;
+      color: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .total-label {
+      font-size: 0.95rem;
+      color: #AEAEB2;
+    }
+
+    .total-amount {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .deposit-row {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #3A3A3C;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .deposit-input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .deposit-row input {
+      width: 110px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1.1rem;
+      text-align: right;
+      font-weight: bold;
+    }
+
+    .btn-reset-deposit {
+      background: #3A3A3C;
+      color: #fff;
+      padding: 8px 10px;
+      font
