@@ -228,4 +228,733 @@
       background: #3A3A3C;
       color: #fff;
       padding: 8px 10px;
-      font
+      font-size: 0.8rem;
+      border-radius: 8px;
+    }
+
+    .change-amount {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--success);
+    }
+
+    .list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      margin-bottom: 10px;
+    }
+
+    .cart-list {
+      list-style: none;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .empty-msg {
+      text-align: center;
+      color: #8E8E93;
+      padding: 28px 0;
+      font-size: 0.95rem;
+    }
+
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #E5E5EA;
+      gap: 8px;
+    }
+
+    .item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .item-name {
+      font-weight: 600;
+      font-size: 1.05rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-price {
+      font-size: 0.85rem;
+      color: #636366;
+      margin-top: 2px;
+    }
+
+    .qty-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-qty {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border-radius: 8px;
+      background: #E5E5EA;
+      color: var(--text);
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .item-qty {
+      min-width: 24px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .btn-del {
+      background: transparent;
+      color: var(--danger);
+      padding: 6px 8px;
+      font-size: 0.9rem;
+    }
+
+    .hint-box {
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: #636366;
+      line-height: 1.5;
+    }
+
+    /* 売上履歴サマリー＆一覧セクション */
+    .sales-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .sales-summary {
+      background: #F2F2F7;
+      padding: 12px 16px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .sales-total-val {
+      font-size: 1.3rem;
+      color: var(--primary);
+      font-weight: 800;
+    }
+
+    .history-table-wrap {
+      max-height: 240px;
+      overflow-y: auto;
+      border: 1px solid #E5E5EA;
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid #E5E5EA;
+    }
+
+    th {
+      background: #F9F9FB;
+      position: sticky;
+      top: 0;
+      font-weight: 600;
+      color: #636366;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>QRコード 簡易レジ</h1>
+    <div class="header-actions">
+      <button class="btn-clear" onclick="clearCart()">現在の会計をクリア</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- 左側：カメラ読み取りセクション -->
+    <div>
+      <div class="card">
+        <div id="camera-wrapper">
+          <div id="reader"></div>
+          <div id="toast">読み取りました</div>
+        </div>
+
+        <div class="camera-controls">
+          <button id="start-btn" class="btn-primary">カメラ起動・スキャン開始</button>
+          <button id="stop-btn" class="btn-stop">停止</button>
+        </div>
+
+        <div class="hint-box">
+          <strong>対応QRデータ形式：</strong><br>
+          ・商品：<code>りんご,150</code> / <code>{"name":"りんご","price":150}</code><br>
+          ・預かり金：<code>PAY,1000</code>（加算式）<br>
+          ・ピッタリ：<code>PAY,EXACT</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右側：会計・商品リストセクション -->
+    <div>
+      <div class="card">
+        <div class="total-box">
+          <div class="total-row">
+            <span class="total-label">合計金額（<span id="total-count">0</span>点）</span>
+            <span class="total-amount">¥<span id="total-price">0</span></span>
+          </div>
+          <div class="deposit-row">
+            <div class="deposit-input-group">
+              <span class="total-label">お預かり：¥</span>
+              <input type="number" id="deposit-input" placeholder="0" oninput="updateChange()">
+              <button class="btn-reset-deposit" onclick="resetDeposit()">0に戻す</button>
+            </div>
+            <div>
+              <span class="total-label">お釣り：</span>
+              <span class="change-amount">¥<span id="change-price">0</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 会計確定ボタン -->
+        <button class="btn-checkout" onclick="completeCheckout()">✔ 会計を確定して売上に記録</button>
+
+        <div class="list-header">
+          <strong>読み取り商品リスト</strong>
+        </div>
+
+        <ul id="cart-list" class="cart-list">
+          <li class="empty-msg">QRコードをかざすとここに商品が追加されます</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 下部：売上履歴・CSVダウンロードセクション -->
+  <div class="card">
+    <div class="sales-header">
+      <strong>📊 本日の売上履歴（iPad内に自動保存）</strong>
+      <div class="header-actions">
+        <button class="btn-csv" onclick="downloadCSV()">CSVダウンロード</button>
+        <button class="btn-clear" onclick="clearSalesHistory()">履歴全削除</button>
+      </div>
+    </div>
+
+    <div class="sales-summary">
+      <span>会計件数：<span id="sales-tx-count">0</span>件 ／ 販売点数：<span id="sales-item-count">0</span>点</span>
+      <span>累計売上：<span class="sales-total-val">¥<span id="sales-total-amount">0</span></span></span>
+    </div>
+
+    <div class="history-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>会計No.</th>
+            <th>日時</th>
+            <th>商品名</th>
+            <th>単価</th>
+            <th>数量</th>
+            <th>小計</th>
+          </tr>
+        </thead>
+        <tbody id="sales-history-body">
+          <tr><td colspan="6" style="text-align:center; color:#8E8E93; padding:16px;">まだ売上履歴はありません</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "qr_pos_sales_history_v1";
+
+    let html5QrCode = null;
+    let audioCtx = null;
+    let isCooldown = false;
+    let isScanning = false;
+    let cart = [];
+    let salesHistory = []; // [{ txId, timestamp, name, price, qty, subtotal }]
+
+    const startBtn = document.getElementById("start-btn");
+    const stopBtn = document.getElementById("stop-btn");
+    const cameraWrapper = document.getElementById("camera-wrapper");
+    const toastEl = document.getElementById("toast");
+    const depositInput = document.getElementById("deposit-input");
+
+    // 起動時にiPad内の売上履歴を読み込む
+    window.addEventListener("DOMContentLoaded", () => {
+      loadSalesHistory();
+      renderSalesHistory();
+    });
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+    }
+
+    function playBeep(type = "item") {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+
+      if (type === "pay") {
+        [0, 0.09].forEach(offset => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = 1400;
+          gain.gain.setValueAtTime(0.25, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.07);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.07);
+        });
+        return;
+      }
+
+      if (type === "checkout") {
+        // 会計確定時は「ピ・ポ・パ」の完了音
+        [880, 1108, 1318].forEach((freq, idx) => {
+          const offset = idx * 0.08;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.25, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.12);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.12);
+        });
+        return;
+      }
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = type === "error" ? 300 : 1000;
+
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.14);
+    }
+
+    startBtn.addEventListener("click", async () => {
+      initAudio();
+
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader");
+      }
+
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 220, height: 220 },
+            aspectRatio: 1.0
+          },
+          onScanSuccess
+        );
+        isScanning = true;
+        startBtn.style.display = "none";
+        stopBtn.style.display = "inline-block";
+      } catch (err) {
+        alert("カメラの起動に失敗しました: " + err);
+      }
+    });
+
+    stopBtn.addEventListener("click", async () => {
+      if (html5QrCode && isScanning) {
+        await html5QrCode.stop();
+        isScanning = false;
+        startBtn.style.display = "inline-block";
+        stopBtn.style.display = "none";
+      }
+    });
+
+    function onScanSuccess(decodedText) {
+      if (isCooldown) return;
+      isCooldown = true;
+
+      const parsed = parseQrData(decodedText);
+
+      if (parsed && parsed.kind === "item") {
+        playBeep("item");
+        showFeedback(`${parsed.name}（¥${parsed.price.toLocaleString()}）`, "item");
+        addToCart(parsed.name, parsed.price);
+      } else if (parsed && parsed.kind === "pay") {
+        playBeep("pay");
+        if (parsed.exact) {
+          const total = getTotalPrice();
+          depositInput.value = total;
+          showFeedback(`お預かり（ピッタリ）：¥${total.toLocaleString()}`, "pay");
+        } else {
+          const current = Number(depositInput.value) || 0;
+          const nextDeposit = current + parsed.amount;
+          depositInput.value = nextDeposit;
+          showFeedback(`お預かり +¥${parsed.amount.toLocaleString()}（計 ¥${nextDeposit.toLocaleString()}）`, "pay");
+        }
+        updateChange();
+      } else {
+        playBeep("error");
+        showFeedback("無効なQR形式です", "error");
+      }
+
+      setTimeout(() => {
+        isCooldown = false;
+      }, 1500);
+    }
+
+    function parseQrData(text) {
+      const trimmed = text.trim();
+
+      if (trimmed.toUpperCase().startsWith("PAY,")) {
+        const val = trimmed.split(",")[1].trim().toUpperCase();
+        if (val === "EXACT") {
+          return { kind: "pay", exact: true, amount: 0 };
+        }
+        const amount = Number(val);
+        if (!isNaN(amount) && amount > 0) {
+          return { kind: "pay", exact: false, amount };
+        }
+        return null;
+      }
+
+      if (trimmed.startsWith("{")) {
+        try {
+          const obj = JSON.parse(trimmed);
+          if (obj.type === "pay" && !isNaN(Number(obj.amount))) {
+            return { kind: "pay", exact: false, amount: Number(obj.amount) };
+          }
+          if (obj.name && !isNaN(Number(obj.price))) {
+            return { kind: "item", name: String(obj.name), price: Number(obj.price) };
+          }
+        } catch (e) {
+          return null;
+        }
+      }
+
+      if (trimmed.includes(",")) {
+        const parts = trimmed.split(",");
+        const name = parts[0].trim();
+        const price = Number(parts[1].trim());
+        if (name && !isNaN(price)) {
+          return { kind: "item", name, price };
+        }
+      }
+
+      return null;
+    }
+
+    function showFeedback(message, type = "item") {
+      toastEl.textContent = message;
+
+      if (type === "error") {
+        toastEl.style.background = "rgba(255, 59, 48, 0.95)";
+      } else if (type === "pay") {
+        toastEl.style.background = "rgba(255, 149, 0, 0.95)";
+        cameraWrapper.classList.add("pay-flash");
+      } else {
+        toastEl.style.background = "rgba(52, 199, 89, 0.95)";
+        cameraWrapper.classList.add("scan-flash");
+      }
+
+      toastEl.classList.add("show");
+
+      setTimeout(() => {
+        toastEl.classList.remove("show");
+        cameraWrapper.classList.remove("scan-flash", "pay-flash");
+      }, 1100);
+    }
+
+    function addToCart(name, price) {
+      const existing = cart.find(item => item.name === name && item.price === price);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.unshift({ name, price, qty: 1 });
+      }
+      renderCart();
+    }
+
+    function changeQty(index, delta) {
+      cart[index].qty += delta;
+      if (cart[index].qty <= 0) {
+        cart.splice(index, 1);
+      }
+      renderCart();
+    }
+
+    function removeItem(index) {
+      cart.splice(index, 1);
+      renderCart();
+    }
+
+    function resetDeposit() {
+      depositInput.value = "";
+      updateChange();
+    }
+
+    function clearCart() {
+      if (cart.length === 0 && !depositInput.value) return;
+      if (confirm("現在のリストと金額をクリアしますか？（売上には記録されません）")) {
+        cart = [];
+        depositInput.value = "";
+        renderCart();
+      }
+    }
+
+    function getTotalPrice() {
+      return cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+    }
+
+    function renderCart() {
+      const listEl = document.getElementById("cart-list");
+      const totalPriceEl = document.getElementById("total-price");
+      const totalCountEl = document.getElementById("total-count");
+
+      if (cart.length === 0) {
+        listEl.innerHTML = '<li class="empty-msg">QRコードをかざすとここに商品が追加されます</li>';
+        totalPriceEl.textContent = "0";
+        totalCountEl.textContent = "0";
+        updateChange();
+        return;
+      }
+
+      let totalPrice = 0;
+      let totalCount = 0;
+
+      listEl.innerHTML = cart.map((item, index) => {
+        const subtotal = item.price * item.qty;
+        totalPrice += subtotal;
+        totalCount += item.qty;
+
+        return `
+          <li class="cart-item">
+            <div class="item-info">
+              <div class="item-name">${escapeHtml(item.name)}</div>
+              <div class="item-price">単価 ¥${item.price.toLocaleString()} ／ 小計 ¥${subtotal.toLocaleString()}</div>
+            </div>
+            <div class="qty-controls">
+              <button class="btn-qty" onclick="changeQty(${index}, -1)">−</button>
+              <span class="item-qty">${item.qty}</span>
+              <button class="btn-qty" onclick="changeQty(${index}, 1)">＋</button>
+              <button class="btn-del" onclick="removeItem(${index})">削除</button>
+            </div>
+          </li>
+        `;
+      }).join("");
+
+      totalPriceEl.textContent = totalPrice.toLocaleString();
+      totalCountEl.textContent = totalCount;
+      updateChange();
+    }
+
+    function updateChange() {
+      const total = getTotalPrice();
+      const deposit = Number(depositInput.value) || 0;
+      const change = deposit - total;
+      const changeEl = document.getElementById("change-price");
+
+      if (deposit === 0 || change < 0) {
+        changeEl.textContent = "0";
+      } else {
+        changeEl.textContent = change.toLocaleString();
+      }
+    }
+
+    // ==========================================
+    // 会計確定＆売上履歴保存処理
+    // ==========================================
+    function completeCheckout() {
+      if (cart.length === 0) {
+        alert("商品が読み取られていません。");
+        return;
+      }
+
+      const total = getTotalPrice();
+      const deposit = Number(depositInput.value) || 0;
+
+      // お預かり金額が入力されていて、かつ合計より少ない場合は警告
+      if (deposit > 0 && deposit < total) {
+        if (!confirm(`お預かり金額（¥${deposit.toLocaleString()}）が合計金額（¥${total.toLocaleString()}）より少ないですが、このまま会計を確定しますか？`)) {
+          return;
+        }
+      }
+
+      initAudio();
+      playBeep("checkout");
+
+      // 会計番号（既存の最大txId + 1）
+      const maxTxId = salesHistory.reduce((max, row) => Math.max(max, row.txId), 0);
+      const nextTxId = maxTxId + 1;
+      const nowStr = formatDateTime(new Date());
+
+      // カート内の各商品を履歴配列に追加
+      cart.forEach(item => {
+        salesHistory.push({
+          txId: nextTxId,
+          timestamp: nowStr,
+          name: item.name,
+          price: item.price,
+          qty: item.qty,
+          subtotal: item.price * item.qty
+        });
+      });
+
+      saveSalesHistory();
+      renderSalesHistory();
+
+      showFeedback(`会計 #${nextTxId} を記録しました（¥${total.toLocaleString()}）`, "item");
+
+      // 次の会計のためにカートと預かり金をリセット
+      cart = [];
+      depositInput.value = "";
+      renderCart();
+    }
+
+    function saveSalesHistory() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(salesHistory));
+    }
+
+    function loadSalesHistory() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          salesHistory = JSON.parse(raw);
+        }
+      } catch (e) {
+        salesHistory = [];
+      }
+    }
+
+    function renderSalesHistory() {
+      const tbody = document.getElementById("sales-history-body");
+      const txCountEl = document.getElementById("sales-tx-count");
+      const itemCountEl = document.getElementById("sales-item-count");
+      const totalAmountEl = document.getElementById("sales-total-amount");
+
+      if (salesHistory.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#8E8E93; padding:16px;">まだ売上履歴はありません</td></tr>';
+        txCountEl.textContent = "0";
+        itemCountEl.textContent = "0";
+        totalAmountEl.textContent = "0";
+        return;
+      }
+
+      // 集計計算
+      const uniqueTxIds = new Set(salesHistory.map(r => r.txId));
+      const totalQty = salesHistory.reduce((sum, r) => sum + r.qty, 0);
+      const totalSales = salesHistory.reduce((sum, r) => sum + r.subtotal, 0);
+
+      txCountEl.textContent = uniqueTxIds.size;
+      itemCountEl.textContent = totalQty;
+      totalAmountEl.textContent = totalSales.toLocaleString();
+
+      // 新しい履歴が上に来るように逆順表示
+      tbody.innerHTML = [...salesHistory].reverse().map(row => `
+        <tr>
+          <td>#${row.txId}</td>
+          <td>${escapeHtml(row.timestamp)}</td>
+          <td>${escapeHtml(row.name)}</td>
+          <td>¥${row.price.toLocaleString()}</td>
+          <td>${row.qty}</td>
+          <td>¥${row.subtotal.toLocaleString()}</td>
+        </tr>
+      `).join("");
+    }
+
+    // ==========================================
+    // CSVファイルダウンロード処理（Excel文字化け防止BOM付き）
+    // ==========================================
+    function downloadCSV() {
+      if (salesHistory.length === 0) {
+        alert("ダウンロードする売上履歴がありません。");
+        return;
+      }
+
+      const headers = ["会計番号", "日時", "商品名", "単価", "数量", "小計"];
+      const rows = salesHistory.map(r => [
+        r.txId,
+        `"${r.timestamp}"`,
+        `"${r.name.replace(/"/g, '""')}"`,
+        r.price,
+        r.qty,
+        r.subtotal
+      ].join(","));
+
+      // UTF-8 BOM (\uFEFF) を先頭に付与してExcelでの文字化けを防ぐ
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `sales_${datePart}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function clearSalesHistory() {
+      if (salesHistory.length === 0) return;
+      if (confirm("保存されている売上履歴をすべて削除しますか？\n（削除する前にCSVダウンロードすることをおすすめします）")) {
+        salesHistory = [];
+        saveSalesHistory();
+        renderSalesHistory();
+      }
+    }
+
+    function formatDateTime(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      const hh = String(date.getHours()).padStart(2, "0");
+      const mm = String(date.getMinutes()).padStart(2, "0");
+      const ss = String(date.getSeconds()).padStart(2, "0");
+      return `${y}/${m}/${d} ${hh}:${mm}:${ss}`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, match => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[match]));
+    }
+  </script>
+</body>
+</html>
