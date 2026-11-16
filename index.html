@@ -3,17 +3,57 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>QR簡易レジアプリ（売上管理・CSV出力対応）</title>
+  <title>QR簡易レジアプリ（お客様提示モード対応）</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
+    /* ==========================================
+       カラーテーマ設定（CSS変数で一括管理）
+       ========================================== */
     :root {
-      --primary: #007AFF;
-      --success: #34C759;
-      --warning: #FF9500;
-      --danger: #FF3B30;
-      --bg: #F2F2F7;
+      --primary: #0066CC;
+      --success: #1E9E47;
+      --warning: #E67E00;
+      --danger: #D93025;
+      --bg: #F0F2F5;
       --card: #FFFFFF;
-      --text: #1C1C1E;
+      --text: #1A1A1A;
+      --subtext: #5F6368;
+      --border: #DADCE0;
+      --display-bg: #182232;
+      --display-text: #FFFFFF;
+      --change-highlight: #00E676;
+    }
+
+    /* テーマ2：カフェ・ナチュラル風 */
+    body.theme-cafe {
+      --primary: #6D4C41;
+      --success: #2E7D32;
+      --warning: #EF6C00;
+      --danger: #C62828;
+      --bg: #F7F3EE;
+      --card: #FFFDF9;
+      --text: #3E2723;
+      --subtext: #795548;
+      --border: #E0D6CC;
+      --display-bg: #3E2723;
+      --display-text: #FFF8E1;
+      --change-highlight: #A5D6A7;
+    }
+
+    /* テーマ3：ハイコントラスト白（屋外・明るい場所向け） */
+    body.theme-light {
+      --primary: #0052CC;
+      --success: #00875A;
+      --warning: #FF8B00;
+      --danger: #DE350B;
+      --bg: #E9ECEF;
+      --card: #FFFFFF;
+      --text: #091E42;
+      --subtext: #42526E;
+      --border: #C1C7D0;
+      --display-bg: #FFFFFF;
+      --display-text: #091E42;
+      --change-highlight: #00875A;
     }
 
     * {
@@ -27,8 +67,9 @@
       background-color: var(--bg);
       color: var(--text);
       padding: 16px;
-      max-width: 960px;
+      max-width: 1040px;
       margin: 0 auto;
+      transition: background-color 0.2s, color 0.2s;
     }
 
     header {
@@ -41,13 +82,24 @@
     }
 
     h1 {
-      font-size: 1.3rem;
-      font-weight: 700;
+      font-size: 1.35rem;
+      font-weight: 800;
     }
 
     .header-actions {
       display: flex;
       gap: 8px;
+      align-items: center;
+    }
+
+    select.theme-select {
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 600;
     }
 
     .container {
@@ -58,22 +110,23 @@
 
     @media (min-width: 768px) {
       .container {
-        grid-template-columns: 340px 1fr;
+        grid-template-columns: 320px 1fr;
         align-items: start;
       }
     }
 
     .card {
       background: var(--card);
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
       margin-bottom: 16px;
+      border: 1px solid var(--border);
     }
 
     #camera-wrapper {
       position: relative;
-      border-radius: 10px;
+      border-radius: 12px;
       overflow: hidden;
       background: #000;
       border: 4px solid transparent;
@@ -90,7 +143,7 @@
 
     #reader {
       width: 100%;
-      min-height: 240px;
+      min-height: 220px;
     }
 
     #toast {
@@ -98,7 +151,7 @@
       bottom: 12px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(52, 199, 89, 0.95);
+      background: rgba(30, 158, 71, 0.95);
       color: #fff;
       padding: 8px 16px;
       border-radius: 20px;
@@ -123,17 +176,18 @@
 
     button {
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 12px 16px;
       font-size: 1rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: opacity 0.2s, transform 0.1s;
       touch-action: manipulation;
     }
 
     button:active {
-      opacity: 0.7;
+      opacity: 0.75;
+      transform: scale(0.99);
     }
 
     .btn-primary {
@@ -143,26 +197,141 @@
     }
 
     .btn-stop {
-      background: #8E8E93;
+      background: #6E7781;
       color: #fff;
       display: none;
     }
 
     .btn-clear {
-      background: #E5E5EA;
+      background: rgba(217, 48, 37, 0.12);
       color: var(--danger);
       font-size: 0.9rem;
       padding: 8px 12px;
     }
 
+    /* ==========================================
+       拡大された金額ディスプレイエリア
+       ========================================== */
+    .total-box {
+      background: var(--display-bg);
+      color: var(--display-text);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 14px;
+      border: 2px solid var(--border);
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .total-label {
+      font-size: 1.1rem;
+      font-weight: 700;
+      opacity: 0.85;
+    }
+
+    /* 合計金額を特大サイズに */
+    .total-amount {
+      font-size: 3.4rem;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+    }
+
+    .deposit-change-grid {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(128, 128, 128, 0.35);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    @media (max-width: 520px) {
+      .deposit-change-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .deposit-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .deposit-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .deposit-input-wrap input {
+      width: 140px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 2px solid var(--primary);
+      font-size: 1.5rem;
+      text-align: right;
+      font-weight: 800;
+      background: #FFFFFF;
+      color: #111111;
+    }
+
+    .btn-reset-deposit {
+      background: rgba(128, 128, 128, 0.25);
+      color: inherit;
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      border-radius: 10px;
+    }
+
+    /* お釣り表示も大きく強調 */
+    .change-block {
+      text-align: right;
+      background: rgba(128, 128, 128, 0.15);
+      padding: 10px 14px;
+      border-radius: 12px;
+    }
+
+    .change-amount {
+      font-size: 2.3rem;
+      font-weight: 900;
+      color: var(--change-highlight);
+      display: block;
+      line-height: 1.15;
+    }
+
+    /* アクションボタン群（お客様提示＆会計確定） */
+    .action-buttons-row {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .btn-customer-view {
+      background: var(--primary);
+      color: #fff;
+      font-size: 1.05rem;
+      padding: 15px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
     .btn-checkout {
       background: var(--success);
       color: #fff;
-      width: 100%;
-      font-size: 1.15rem;
-      padding: 14px;
-      margin-top: 12px;
-      box-shadow: 0 3px 8px rgba(52, 199, 89, 0.3);
+      font-size: 1.1rem;
+      padding: 15px 12px;
+      box-shadow: 0 3px 10px rgba(30, 158, 71, 0.3);
     }
 
     .btn-csv {
@@ -172,89 +341,25 @@
       padding: 8px 14px;
     }
 
-    .total-box {
-      background: #1C1C1E;
-      color: #fff;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 12px;
-    }
-
-    .total-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-    }
-
-    .total-label {
-      font-size: 0.95rem;
-      color: #AEAEB2;
-    }
-
-    .total-amount {
-      font-size: 2.2rem;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-    }
-
-    .deposit-row {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #3A3A3C;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .deposit-input-group {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .deposit-row input {
-      width: 110px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: none;
-      font-size: 1.1rem;
-      text-align: right;
-      font-weight: bold;
-    }
-
-    .btn-reset-deposit {
-      background: #3A3A3C;
-      color: #fff;
-      padding: 8px 10px;
-      font-size: 0.8rem;
-      border-radius: 8px;
-    }
-
-    .change-amount {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--success);
-    }
-
+    /* 商品リスト */
     .list-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 16px;
+      margin-top: 18px;
       margin-bottom: 10px;
+      font-size: 1.05rem;
     }
 
     .cart-list {
       list-style: none;
-      max-height: 320px;
+      max-height: 300px;
       overflow-y: auto;
     }
 
     .empty-msg {
       text-align: center;
-      color: #8E8E93;
+      color: var(--subtext);
       padding: 28px 0;
       font-size: 0.95rem;
     }
@@ -263,8 +368,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid #E5E5EA;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
       gap: 8px;
     }
 
@@ -274,16 +379,16 @@
     }
 
     .item-name {
-      font-weight: 600;
-      font-size: 1.05rem;
+      font-weight: 700;
+      font-size: 1.15rem;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     .item-price {
-      font-size: 0.85rem;
-      color: #636366;
+      font-size: 0.9rem;
+      color: var(--subtext);
       margin-top: 2px;
     }
 
@@ -294,23 +399,24 @@
     }
 
     .btn-qty {
-      width: 34px;
-      height: 34px;
+      width: 38px;
+      height: 38px;
       padding: 0;
-      border-radius: 8px;
-      background: #E5E5EA;
+      border-radius: 10px;
+      background: var(--bg);
       color: var(--text);
-      font-size: 1.2rem;
+      border: 1px solid var(--border);
+      font-size: 1.3rem;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
     .item-qty {
-      min-width: 24px;
+      min-width: 28px;
       text-align: center;
-      font-weight: 700;
-      font-size: 1.05rem;
+      font-weight: 800;
+      font-size: 1.15rem;
     }
 
     .btn-del {
@@ -323,11 +429,11 @@
     .hint-box {
       margin-top: 12px;
       font-size: 0.8rem;
-      color: #636366;
+      color: var(--subtext);
       line-height: 1.5;
     }
 
-    /* 売上履歴サマリー＆一覧セクション */
+    /* 売上履歴セクション */
     .sales-header {
       display: flex;
       justify-content: space-between;
@@ -338,26 +444,26 @@
     }
 
     .sales-summary {
-      background: #F2F2F7;
+      background: var(--bg);
       padding: 12px 16px;
       border-radius: 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .sales-total-val {
-      font-size: 1.3rem;
+      font-size: 1.4rem;
       color: var(--primary);
-      font-weight: 800;
+      font-weight: 900;
     }
 
     .history-table-wrap {
-      max-height: 240px;
+      max-height: 220px;
       overflow-y: auto;
-      border: 1px solid #E5E5EA;
+      border: 1px solid var(--border);
       border-radius: 8px;
     }
 
@@ -370,15 +476,139 @@
     th, td {
       padding: 8px 10px;
       text-align: left;
-      border-bottom: 1px solid #E5E5EA;
+      border-bottom: 1px solid var(--border);
     }
 
     th {
-      background: #F9F9FB;
+      background: var(--bg);
       position: sticky;
       top: 0;
-      font-weight: 600;
-      color: #636366;
+      font-weight: 700;
+      color: var(--subtext);
+    }
+
+    /* ==========================================
+       お客様提示用・全画面オーバーレイモーダル
+       ========================================== */
+    #customer-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--display-bg);
+      color: var(--display-text);
+      z-index: 9999;
+      padding: 24px;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    #customer-modal.active {
+      display: flex;
+    }
+
+    .cm-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid rgba(128,128,128,0.3);
+      padding-bottom: 12px;
+    }
+
+    .cm-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .cm-body {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 24px;
+      flex: 1;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+      .cm-body {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .cm-items-box {
+      background: rgba(128, 128, 128, 0.12);
+      border-radius: 16px;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .cm-item-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .cm-amounts-box {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+      background: rgba(128, 128, 128, 0.12);
+      border-radius: 20px;
+      padding: 24px;
+    }
+
+    .cm-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .cm-label {
+      font-size: 1.6rem;
+      font-weight: 700;
+      opacity: 0.85;
+    }
+
+    .cm-val-total {
+      font-size: 4.5rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .cm-val-deposit {
+      font-size: 3rem;
+      font-weight: 800;
+    }
+
+    .cm-val-change {
+      font-size: 4.2rem;
+      font-weight: 900;
+      color: var(--change-highlight);
+      line-height: 1;
+    }
+
+    .cm-footer {
+      display: flex;
+      gap: 16px;
+    }
+
+    .btn-cm-close {
+      background: #6E7781;
+      color: #fff;
+      font-size: 1.2rem;
+      padding: 18px 24px;
+      flex: 1;
+    }
+
+    .btn-cm-done {
+      background: var(--success);
+      color: #fff;
+      font-size: 1.3rem;
+      padding: 18px 24px;
+      flex: 2;
     }
   </style>
 </head>
@@ -387,7 +617,12 @@
   <header>
     <h1>QRコード 簡易レジ</h1>
     <div class="header-actions">
-      <button class="btn-clear" onclick="clearCart()">現在の会計をクリア</button>
+      <select class="theme-select" id="theme-select" onchange="changeTheme(this.value)">
+        <option value="">配色：標準ダーク表示</option>
+        <option value="theme-light">配色：明るい白表示</option>
+        <option value="theme-cafe">配色：カフェ風ブラウン</option>
+      </select>
+      <button class="btn-clear" onclick="clearCart()">クリア</button>
     </div>
   </header>
 
@@ -422,21 +657,29 @@
             <span class="total-label">合計金額（<span id="total-count">0</span>点）</span>
             <span class="total-amount">¥<span id="total-price">0</span></span>
           </div>
-          <div class="deposit-row">
-            <div class="deposit-input-group">
-              <span class="total-label">お預かり：¥</span>
-              <input type="number" id="deposit-input" placeholder="0" oninput="updateChange()">
-              <button class="btn-reset-deposit" onclick="resetDeposit()">0に戻す</button>
+
+          <div class="deposit-change-grid">
+            <div class="deposit-block">
+              <span class="total-label">お預かり金額</span>
+              <div class="deposit-input-wrap">
+                <span style="font-size:1.3rem; font-weight:bold;">¥</span>
+                <input type="number" id="deposit-input" placeholder="0" oninput="updateChange()">
+                <button class="btn-reset-deposit" onclick="resetDeposit()">0</button>
+              </div>
             </div>
-            <div>
-              <span class="total-label">お釣り：</span>
+
+            <div class="change-block">
+              <span class="total-label">お釣り</span>
               <span class="change-amount">¥<span id="change-price">0</span></span>
             </div>
           </div>
         </div>
 
-        <!-- 会計確定ボタン -->
-        <button class="btn-checkout" onclick="completeCheckout()">✔ 会計を確定して売上に記録</button>
+        <!-- お客様提示ボタン ＆ 会計確定ボタン -->
+        <div class="action-buttons-row">
+          <button class="btn-customer-view" onclick="openCustomerModal()">👁 お客様に見せる</button>
+          <button class="btn-checkout" onclick="completeCheckout()">✔ 会計確定（売上記録）</button>
+        </div>
 
         <div class="list-header">
           <strong>読み取り商品リスト</strong>
@@ -483,15 +726,50 @@
     </div>
   </div>
 
+  <!-- お客様提示用・特大表示モーダル -->
+  <div id="customer-modal">
+    <div class="cm-header">
+      <span class="cm-title">お買い上げ内容・お会計金額</span>
+      <span style="font-size:1.2rem; font-weight:700;">点数：<span id="cm-count">0</span>点</span>
+    </div>
+
+    <div class="cm-body">
+      <div class="cm-items-box" id="cm-items-list">
+        <!-- 商品明細がここに入る -->
+      </div>
+
+      <div class="cm-amounts-box">
+        <div class="cm-row">
+          <span class="cm-label">合計金額</span>
+          <span class="cm-val-total">¥<span id="cm-total">0</span></span>
+        </div>
+        <div class="cm-row" style="border-top: 1px solid rgba(128,128,128,0.3); padding-top:16px;">
+          <span class="cm-label">お預かり</span>
+          <span class="cm-val-deposit">¥<span id="cm-deposit">0</span></span>
+        </div>
+        <div class="cm-row" style="border-top: 1px solid rgba(128,128,128,0.3); padding-top:16px;">
+          <span class="cm-label">お釣り</span>
+          <span class="cm-val-change">¥<span id="cm-change">0</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cm-footer">
+      <button class="btn-cm-close" onclick="closeCustomerModal()">← レジ画面に戻る</button>
+      <button class="btn-cm-done" onclick="completeCheckoutFromModal()">✔ 会計確定して次へ</button>
+    </div>
+  </div>
+
   <script>
     const STORAGE_KEY = "qr_pos_sales_history_v1";
+    const THEME_KEY = "qr_pos_theme_v1";
 
     let html5QrCode = null;
     let audioCtx = null;
     let isCooldown = false;
     let isScanning = false;
     let cart = [];
-    let salesHistory = []; // [{ txId, timestamp, name, price, qty, subtotal }]
+    let salesHistory = [];
 
     const startBtn = document.getElementById("start-btn");
     const stopBtn = document.getElementById("stop-btn");
@@ -499,462 +777,23 @@
     const toastEl = document.getElementById("toast");
     const depositInput = document.getElementById("deposit-input");
 
-    // 起動時にiPad内の売上履歴を読み込む
     window.addEventListener("DOMContentLoaded", () => {
+      // 保存された配色テーマの復元
+      const savedTheme = localStorage.getItem(THEME_KEY) || "";
+      document.body.className = savedTheme;
+      document.getElementById("theme-select").value = savedTheme;
+
       loadSalesHistory();
       renderSalesHistory();
     });
+
+    function changeTheme(themeClass) {
+      document.body.className = themeClass;
+      localStorage.setItem(THEME_KEY, themeClass);
+    }
 
     function initAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
-      if (audioCtx.state === "suspended") {
-        audioCtx.resume();
-      }
-    }
-
-    function playBeep(type = "item") {
-      if (!audioCtx) return;
-      const now = audioCtx.currentTime;
-
-      if (type === "pay") {
-        [0, 0.09].forEach(offset => {
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = "sine";
-          osc.frequency.value = 1400;
-          gain.gain.setValueAtTime(0.25, now + offset);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.07);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start(now + offset);
-          osc.stop(now + offset + 0.07);
-        });
-        return;
-      }
-
-      if (type === "checkout") {
-        // 会計確定時は「ピ・ポ・パ」の完了音
-        [880, 1108, 1318].forEach((freq, idx) => {
-          const offset = idx * 0.08;
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = "sine";
-          osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0.25, now + offset);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.12);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start(now + offset);
-          osc.stop(now + offset + 0.12);
-        });
-        return;
-      }
-
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = type === "error" ? 300 : 1000;
-
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.14);
-    }
-
-    startBtn.addEventListener("click", async () => {
-      initAudio();
-
-      if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("reader");
-      }
-
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 220, height: 220 },
-            aspectRatio: 1.0
-          },
-          onScanSuccess
-        );
-        isScanning = true;
-        startBtn.style.display = "none";
-        stopBtn.style.display = "inline-block";
-      } catch (err) {
-        alert("カメラの起動に失敗しました: " + err);
-      }
-    });
-
-    stopBtn.addEventListener("click", async () => {
-      if (html5QrCode && isScanning) {
-        await html5QrCode.stop();
-        isScanning = false;
-        startBtn.style.display = "inline-block";
-        stopBtn.style.display = "none";
-      }
-    });
-
-    function onScanSuccess(decodedText) {
-      if (isCooldown) return;
-      isCooldown = true;
-
-      const parsed = parseQrData(decodedText);
-
-      if (parsed && parsed.kind === "item") {
-        playBeep("item");
-        showFeedback(`${parsed.name}（¥${parsed.price.toLocaleString()}）`, "item");
-        addToCart(parsed.name, parsed.price);
-      } else if (parsed && parsed.kind === "pay") {
-        playBeep("pay");
-        if (parsed.exact) {
-          const total = getTotalPrice();
-          depositInput.value = total;
-          showFeedback(`お預かり（ピッタリ）：¥${total.toLocaleString()}`, "pay");
-        } else {
-          const current = Number(depositInput.value) || 0;
-          const nextDeposit = current + parsed.amount;
-          depositInput.value = nextDeposit;
-          showFeedback(`お預かり +¥${parsed.amount.toLocaleString()}（計 ¥${nextDeposit.toLocaleString()}）`, "pay");
-        }
-        updateChange();
-      } else {
-        playBeep("error");
-        showFeedback("無効なQR形式です", "error");
-      }
-
-      setTimeout(() => {
-        isCooldown = false;
-      }, 1500);
-    }
-
-    function parseQrData(text) {
-      const trimmed = text.trim();
-
-      if (trimmed.toUpperCase().startsWith("PAY,")) {
-        const val = trimmed.split(",")[1].trim().toUpperCase();
-        if (val === "EXACT") {
-          return { kind: "pay", exact: true, amount: 0 };
-        }
-        const amount = Number(val);
-        if (!isNaN(amount) && amount > 0) {
-          return { kind: "pay", exact: false, amount };
-        }
-        return null;
-      }
-
-      if (trimmed.startsWith("{")) {
-        try {
-          const obj = JSON.parse(trimmed);
-          if (obj.type === "pay" && !isNaN(Number(obj.amount))) {
-            return { kind: "pay", exact: false, amount: Number(obj.amount) };
-          }
-          if (obj.name && !isNaN(Number(obj.price))) {
-            return { kind: "item", name: String(obj.name), price: Number(obj.price) };
-          }
-        } catch (e) {
-          return null;
-        }
-      }
-
-      if (trimmed.includes(",")) {
-        const parts = trimmed.split(",");
-        const name = parts[0].trim();
-        const price = Number(parts[1].trim());
-        if (name && !isNaN(price)) {
-          return { kind: "item", name, price };
-        }
-      }
-
-      return null;
-    }
-
-    function showFeedback(message, type = "item") {
-      toastEl.textContent = message;
-
-      if (type === "error") {
-        toastEl.style.background = "rgba(255, 59, 48, 0.95)";
-      } else if (type === "pay") {
-        toastEl.style.background = "rgba(255, 149, 0, 0.95)";
-        cameraWrapper.classList.add("pay-flash");
-      } else {
-        toastEl.style.background = "rgba(52, 199, 89, 0.95)";
-        cameraWrapper.classList.add("scan-flash");
-      }
-
-      toastEl.classList.add("show");
-
-      setTimeout(() => {
-        toastEl.classList.remove("show");
-        cameraWrapper.classList.remove("scan-flash", "pay-flash");
-      }, 1100);
-    }
-
-    function addToCart(name, price) {
-      const existing = cart.find(item => item.name === name && item.price === price);
-      if (existing) {
-        existing.qty += 1;
-      } else {
-        cart.unshift({ name, price, qty: 1 });
-      }
-      renderCart();
-    }
-
-    function changeQty(index, delta) {
-      cart[index].qty += delta;
-      if (cart[index].qty <= 0) {
-        cart.splice(index, 1);
-      }
-      renderCart();
-    }
-
-    function removeItem(index) {
-      cart.splice(index, 1);
-      renderCart();
-    }
-
-    function resetDeposit() {
-      depositInput.value = "";
-      updateChange();
-    }
-
-    function clearCart() {
-      if (cart.length === 0 && !depositInput.value) return;
-      if (confirm("現在のリストと金額をクリアしますか？（売上には記録されません）")) {
-        cart = [];
-        depositInput.value = "";
-        renderCart();
-      }
-    }
-
-    function getTotalPrice() {
-      return cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-    }
-
-    function renderCart() {
-      const listEl = document.getElementById("cart-list");
-      const totalPriceEl = document.getElementById("total-price");
-      const totalCountEl = document.getElementById("total-count");
-
-      if (cart.length === 0) {
-        listEl.innerHTML = '<li class="empty-msg">QRコードをかざすとここに商品が追加されます</li>';
-        totalPriceEl.textContent = "0";
-        totalCountEl.textContent = "0";
-        updateChange();
-        return;
-      }
-
-      let totalPrice = 0;
-      let totalCount = 0;
-
-      listEl.innerHTML = cart.map((item, index) => {
-        const subtotal = item.price * item.qty;
-        totalPrice += subtotal;
-        totalCount += item.qty;
-
-        return `
-          <li class="cart-item">
-            <div class="item-info">
-              <div class="item-name">${escapeHtml(item.name)}</div>
-              <div class="item-price">単価 ¥${item.price.toLocaleString()} ／ 小計 ¥${subtotal.toLocaleString()}</div>
-            </div>
-            <div class="qty-controls">
-              <button class="btn-qty" onclick="changeQty(${index}, -1)">−</button>
-              <span class="item-qty">${item.qty}</span>
-              <button class="btn-qty" onclick="changeQty(${index}, 1)">＋</button>
-              <button class="btn-del" onclick="removeItem(${index})">削除</button>
-            </div>
-          </li>
-        `;
-      }).join("");
-
-      totalPriceEl.textContent = totalPrice.toLocaleString();
-      totalCountEl.textContent = totalCount;
-      updateChange();
-    }
-
-    function updateChange() {
-      const total = getTotalPrice();
-      const deposit = Number(depositInput.value) || 0;
-      const change = deposit - total;
-      const changeEl = document.getElementById("change-price");
-
-      if (deposit === 0 || change < 0) {
-        changeEl.textContent = "0";
-      } else {
-        changeEl.textContent = change.toLocaleString();
-      }
-    }
-
-    // ==========================================
-    // 会計確定＆売上履歴保存処理
-    // ==========================================
-    function completeCheckout() {
-      if (cart.length === 0) {
-        alert("商品が読み取られていません。");
-        return;
-      }
-
-      const total = getTotalPrice();
-      const deposit = Number(depositInput.value) || 0;
-
-      // お預かり金額が入力されていて、かつ合計より少ない場合は警告
-      if (deposit > 0 && deposit < total) {
-        if (!confirm(`お預かり金額（¥${deposit.toLocaleString()}）が合計金額（¥${total.toLocaleString()}）より少ないですが、このまま会計を確定しますか？`)) {
-          return;
-        }
-      }
-
-      initAudio();
-      playBeep("checkout");
-
-      // 会計番号（既存の最大txId + 1）
-      const maxTxId = salesHistory.reduce((max, row) => Math.max(max, row.txId), 0);
-      const nextTxId = maxTxId + 1;
-      const nowStr = formatDateTime(new Date());
-
-      // カート内の各商品を履歴配列に追加
-      cart.forEach(item => {
-        salesHistory.push({
-          txId: nextTxId,
-          timestamp: nowStr,
-          name: item.name,
-          price: item.price,
-          qty: item.qty,
-          subtotal: item.price * item.qty
-        });
-      });
-
-      saveSalesHistory();
-      renderSalesHistory();
-
-      showFeedback(`会計 #${nextTxId} を記録しました（¥${total.toLocaleString()}）`, "item");
-
-      // 次の会計のためにカートと預かり金をリセット
-      cart = [];
-      depositInput.value = "";
-      renderCart();
-    }
-
-    function saveSalesHistory() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(salesHistory));
-    }
-
-    function loadSalesHistory() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          salesHistory = JSON.parse(raw);
-        }
-      } catch (e) {
-        salesHistory = [];
-      }
-    }
-
-    function renderSalesHistory() {
-      const tbody = document.getElementById("sales-history-body");
-      const txCountEl = document.getElementById("sales-tx-count");
-      const itemCountEl = document.getElementById("sales-item-count");
-      const totalAmountEl = document.getElementById("sales-total-amount");
-
-      if (salesHistory.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#8E8E93; padding:16px;">まだ売上履歴はありません</td></tr>';
-        txCountEl.textContent = "0";
-        itemCountEl.textContent = "0";
-        totalAmountEl.textContent = "0";
-        return;
-      }
-
-      // 集計計算
-      const uniqueTxIds = new Set(salesHistory.map(r => r.txId));
-      const totalQty = salesHistory.reduce((sum, r) => sum + r.qty, 0);
-      const totalSales = salesHistory.reduce((sum, r) => sum + r.subtotal, 0);
-
-      txCountEl.textContent = uniqueTxIds.size;
-      itemCountEl.textContent = totalQty;
-      totalAmountEl.textContent = totalSales.toLocaleString();
-
-      // 新しい履歴が上に来るように逆順表示
-      tbody.innerHTML = [...salesHistory].reverse().map(row => `
-        <tr>
-          <td>#${row.txId}</td>
-          <td>${escapeHtml(row.timestamp)}</td>
-          <td>${escapeHtml(row.name)}</td>
-          <td>¥${row.price.toLocaleString()}</td>
-          <td>${row.qty}</td>
-          <td>¥${row.subtotal.toLocaleString()}</td>
-        </tr>
-      `).join("");
-    }
-
-    // ==========================================
-    // CSVファイルダウンロード処理（Excel文字化け防止BOM付き）
-    // ==========================================
-    function downloadCSV() {
-      if (salesHistory.length === 0) {
-        alert("ダウンロードする売上履歴がありません。");
-        return;
-      }
-
-      const headers = ["会計番号", "日時", "商品名", "単価", "数量", "小計"];
-      const rows = salesHistory.map(r => [
-        r.txId,
-        `"${r.timestamp}"`,
-        `"${r.name.replace(/"/g, '""')}"`,
-        r.price,
-        r.qty,
-        r.subtotal
-      ].join(","));
-
-      // UTF-8 BOM (\uFEFF) を先頭に付与してExcelでの文字化けを防ぐ
-      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-
-      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `sales_${datePart}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-
-    function clearSalesHistory() {
-      if (salesHistory.length === 0) return;
-      if (confirm("保存されている売上履歴をすべて削除しますか？\n（削除する前にCSVダウンロードすることをおすすめします）")) {
-        salesHistory = [];
-        saveSalesHistory();
-        renderSalesHistory();
-      }
-    }
-
-    function formatDateTime(date) {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, "0");
-      const d = String(date.getDate()).padStart(2, "0");
-      const hh = String(date.getHours()).padStart(2, "0");
-      const mm = String(date.getMinutes()).padStart(2, "0");
-      const ss = String(date.getSeconds()).padStart(2, "0");
-      return `${y}/${m}/${d} ${hh}:${mm}:${ss}`;
-    }
-
-    function escapeHtml(str) {
-      return str.replace(/[&<>"']/g, match => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      }[match]));
-    }
-  </script>
-</body>
-</html>
+      if (audioCtx.state ===
