@@ -2,7 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="QRレジ">
+<link id="app-icon" rel="apple-touch-icon">
 <title>QR簡易レジアプリ</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <style>
@@ -10,7 +14,7 @@
 body.theme-cafe { --primary:#6D4C41; --success:#2E7D32; --warning:#EF6C00; --danger:#C62828; --bg:#F7F3EE; --card:#FFFDF9; --text:#3E2723; --subtext:#795548; --border:#E0D6CC; --display-bg:#3E2723; --display-text:#FFF8E1; --change-highlight:#A5D6A7; --shortage-highlight:#FF8A80; }
 body.theme-light { --primary:#0052CC; --success:#00875A; --warning:#FF8B00; --danger:#DE350B; --bg:#E9ECEF; --card:#FFFFFF; --text:#091E42; --subtext:#42526E; --border:#C1C7D0; --display-bg:#FFFFFF; --display-text:#091E42; --change-highlight:#00875A; --shortage-highlight:#DE350B; }
 * { box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif; }
-body { background:var(--bg); color:var(--text); padding:16px; max-width:1040px; margin:0 auto; }
+body { background:var(--bg); color:var(--text); padding:calc(16px + env(safe-area-inset-top)) 16px 16px; max-width:1040px; margin:0 auto; }
 #status-banner { display:none; background:#FFF3CD; color:#856404; border:1px solid #FFEEBA; padding:10px 14px; border-radius:10px; margin-bottom:12px; font-size:0.9rem; font-weight:bold; }
 header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
 h1 { font-size:1.35rem; font-weight:800; }
@@ -32,4 +36,163 @@ button:disabled { background:#9EA4AA !important; color:#E5E7EB !important; curso
 .btn-primary { background:var(--primary); color:#fff; flex:1; }
 .btn-stop { background:#6E7781; color:#fff; display:none; }
 .btn-clear { background:rgba(217,48,37,0.12); color:var(--danger); font-size:0.9rem; padding:8px 12px; }
-.total-box { background:var(--display-bg); color:var(--display-text
+.total-box { background:var(--display-bg); color:var(--display-text); border-radius:14px; padding:20px; margin-bottom:14px; border:2px solid var(--border); }
+.total-row { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; }
+.total-label { font-size:1.1rem; font-weight:700; opacity:0.85; }
+.total-amount { font-size:3.4rem; font-weight:900; line-height:1.1; }
+.deposit-change-grid { margin-top:16px; padding-top:16px; border-top:1px solid rgba(128,128,128,0.35); display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:center; }
+@media (max-width:520px) { .deposit-change-grid { grid-template-columns:1fr; } }
+.deposit-input-wrap { display:flex; align-items:center; gap:6px; margin-top:6px; }
+.deposit-input-wrap input { width:140px; padding:10px 12px; border-radius:10px; border:2px solid var(--primary); font-size:1.5rem; text-align:right; font-weight:800; background:#fff; color:#111; }
+.btn-reset-deposit { background:rgba(128,128,128,0.25); color:inherit; padding:10px 12px; font-size:0.85rem; border-radius:10px; }
+.change-block { text-align:right; background:rgba(128,128,128,0.15); padding:10px 14px; border-radius:12px; }
+.change-amount { font-size:2.3rem; font-weight:900; color:var(--change-highlight); display:block; line-height:1.15; }
+.change-amount.shortage { color:var(--shortage-highlight); font-size:1.9rem; }
+.action-buttons-row { display:grid; grid-template-columns:1fr 1.3fr; gap:10px; margin-top:12px; }
+.btn-customer-view { background:var(--primary); color:#fff; font-size:1.05rem; padding:15px 12px; }
+.btn-checkout { background:var(--success); color:#fff; font-size:1.05rem; padding:15px 12px; }
+.btn-csv { background:var(--primary); color:#fff; font-size:0.9rem; padding:8px 14px; }
+.list-header { display:flex; justify-content:space-between; align-items:center; margin:18px 0 10px; font-size:1.05rem; }
+.cart-list { list-style:none; max-height:300px; overflow-y:auto; }
+.empty-msg { text-align:center; color:var(--subtext); padding:28px 0; font-size:0.95rem; }
+.cart-item { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); gap:8px; }
+.item-info { flex:1; min-width:0; }
+.item-name { font-weight:700; font-size:1.15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.item-price { font-size:0.9rem; color:var(--subtext); margin-top:2px; }
+.qty-controls { display:flex; align-items:center; gap:8px; }
+.btn-qty { width:38px; height:38px; padding:0; border-radius:10px; background:var(--bg); color:var(--text); border:1px solid var(--border); font-size:1.3rem; }
+.item-qty { min-width:28px; text-align:center; font-weight:800; font-size:1.15rem; }
+.btn-del { background:transparent; color:var(--danger); padding:6px 8px; font-size:0.9rem; }
+.hint-box { margin-top:12px; font-size:0.8rem; color:var(--subtext); line-height:1.5; }
+.sales-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.sales-summary { background:var(--bg); padding:12px 16px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-weight:700; }
+.sales-total-val { font-size:1.4rem; color:var(--primary); font-weight:900; }
+.history-table-wrap { max-height:240px; overflow-x:auto; overflow-y:auto; border:1px solid var(--border); border-radius:8px; }
+table { width:100%; border-collapse:collapse; font-size:0.85rem; white-space:nowrap; }
+th, td { padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); }
+th { background:var(--bg); position:sticky; top:0; font-weight:700; color:var(--subtext); }
+#customer-modal { display:none; position:fixed; inset:0; background:var(--display-bg); color:var(--display-text); z-index:9999; padding:calc(24px + env(safe-area-inset-top)) 24px 24px; flex-direction:column; justify-content:space-between; }
+#customer-modal.active { display:flex; }
+.cm-header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid rgba(128,128,128,0.3); padding-bottom:12px; }
+.cm-title { font-size:1.5rem; font-weight:800; }
+.cm-body { display:grid; grid-template-columns:1fr 1.2fr; gap:24px; flex:1; margin:20px 0; overflow:hidden; }
+@media (max-width:768px) { .cm-body { grid-template-columns:1fr; } }
+.cm-items-box { background:rgba(128,128,128,0.12); border-radius:16px; padding:16px; overflow-y:auto; }
+.cm-item-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(128,128,128,0.25); font-size:1.3rem; font-weight:700; }
+.cm-amounts-box { display:flex; flex-direction:column; justify-content:center; gap:20px; background:rgba(128,128,128,0.12); border-radius:20px; padding:24px; }
+.cm-row { display:flex; justify-content:space-between; align-items:baseline; }
+.cm-label { font-size:1.6rem; font-weight:700; opacity:0.85; }
+.cm-val-total { font-size:4.5rem; font-weight:900; line-height:1; }
+.cm-val-deposit { font-size:3rem; font-weight:800; }
+.cm-val-change { font-size:4.2rem; font-weight:900; color:var(--change-highlight); line-height:1; }
+.cm-val-change.shortage { color:var(--shortage-highlight); font-size:3.2rem; }
+.cm-footer { display:flex; gap:16px; }
+.btn-cm-close { background:#6E7781; color:#fff; font-size:1.2rem; padding:18px 24px; flex:1; }
+.btn-cm-done { background:var(--success); color:#fff; font-size:1.3rem; padding:18px 24px; flex:2; }
+</style>
+</head>
+<body>
+<div id="status-banner"></div>
+<header>
+  <h1>QRコード 簡易レジ</h1>
+  <div class="header-actions">
+    <select class="theme-select" id="theme-select">
+      <option value="">配色：標準ダーク表示</option>
+      <option value="theme-light">配色：明るい白表示</option>
+      <option value="theme-cafe">配色：カフェ風ブラウン</option>
+    </select>
+    <button type="button" class="btn-clear" id="btn-clear-cart">クリア</button>
+  </div>
+</header>
+<div class="container">
+  <div>
+    <div class="card">
+      <div id="camera-wrapper"><div id="reader"></div><div id="toast">読み取りました</div></div>
+      <div class="camera-controls">
+        <button type="button" id="start-btn" class="btn-primary">カメラ起動・スキャン開始</button>
+        <button type="button" id="stop-btn" class="btn-stop">停止</button>
+      </div>
+      <div class="hint-box"><strong>対応QRデータ形式：</strong><br>・商品：<code>りんご,150</code><br>・預かり金：<code>PAY,1000</code>（加算式）<br>・ピッタリ：<code>PAY,EXACT</code></div>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="total-box">
+        <div class="total-row"><span class="total-label">合計金額（<span id="total-count">0</span>点）</span><span class="total-amount">¥<span id="total-price">0</span></span></div>
+        <div class="deposit-change-grid">
+          <div><span class="total-label">お預かり金額</span><div class="deposit-input-wrap"><span style="font-size:1.3rem;font-weight:bold;">¥</span><input type="number" id="deposit-input" placeholder="0"><button type="button" class="btn-reset-deposit" id="btn-reset-deposit">0</button></div></div>
+          <div class="change-block"><span class="total-label" id="change-label">お釣り</span><span class="change-amount" id="change-price">¥0</span></div>
+        </div>
+      </div>
+      <div class="action-buttons-row">
+        <button type="button" class="btn-customer-view" id="btn-open-modal">👁 お客様に見せる</button>
+        <button type="button" class="btn-checkout" id="btn-checkout" disabled>商品未登録</button>
+      </div>
+      <div class="list-header"><strong>読み取り商品リスト</strong></div>
+      <ul id="cart-list" class="cart-list"><li class="empty-msg">QRコードをかざすとここに商品が追加されます</li></ul>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="sales-header">
+    <strong>📊 本日の売上履歴（iPad内に自動保存）</strong>
+    <div class="header-actions"><button type="button" class="btn-csv" id="btn-csv">CSVダウンロード</button><button type="button" class="btn-clear" id="btn-clear-history">履歴全削除</button></div>
+  </div>
+  <div class="sales-summary">
+    <span>会計件数：<span id="sales-tx-count">0</span>件 ／ 販売点数：<span id="sales-item-count">0</span>点</span>
+    <span>累計売上：<span class="sales-total-val">¥<span id="sales-total-amount">0</span></span></span>
+  </div>
+  <div class="history-table-wrap">
+    <table><thead><tr><th>会計No.</th><th>日時</th><th>商品名</th><th>単価</th><th>数量</th><th>小計</th><th>会計合計</th><th>お預かり</th><th>お釣り</th></tr></thead><tbody id="sales-history-body"><tr><td colspan="9" style="text-align:center;color:#8E8E93;padding:16px;">まだ売上履歴はありません</td></tr></tbody></table>
+  </div>
+</div>
+<div id="customer-modal">
+  <div class="cm-header"><span class="cm-title">お買い上げ内容・お会計金額</span><span style="font-size:1.2rem;font-weight:700;">点数：<span id="cm-count">0</span>点</span></div>
+  <div class="cm-body">
+    <div class="cm-items-box" id="cm-items-list"></div>
+    <div class="cm-amounts-box">
+      <div class="cm-row"><span class="cm-label">合計金額</span><span class="cm-val-total">¥<span id="cm-total">0</span></span></div>
+      <div class="cm-row" style="border-top:1px solid rgba(128,128,128,0.3);padding-top:16px;"><span class="cm-label">お預かり</span><span class="cm-val-deposit">¥<span id="cm-deposit">0</span></span></div>
+      <div class="cm-row" style="border-top:1px solid rgba(128,128,128,0.3);padding-top:16px;"><span class="cm-label" id="cm-change-label">お釣り</span><span class="cm-val-change" id="cm-change">¥0</span></div>
+    </div>
+  </div>
+  <div class="cm-footer"><button type="button" class="btn-cm-close" id="btn-close-modal">← レジ画面に戻る</button><button type="button" class="btn-cm-done" id="btn-modal-checkout" disabled>商品未登録</button></div>
+</div>
+<script>
+(function(){const c=document.createElement("canvas");c.width=180;c.height=180;const x=c.getContext("2d");x.fillStyle="#0066CC";x.fillRect(0,0,180,180);x.fillStyle="#FFF";x.font="bold 46px sans-serif";x.textAlign="center";x.textBaseline="middle";x.fillText("QRレジ",90,92);document.getElementById("app-icon").href=c.toDataURL("image/png");})();
+const STORAGE_KEY="qr_pos_sales_history_v1",THEME_KEY="qr_pos_theme_v1";
+let html5QrCode=null,audioCtx=null,isCooldown=false,isScanning=false,cart=[],salesHistory=[];
+const banner=document.getElementById("status-banner"),startBtn=document.getElementById("start-btn"),stopBtn=document.getElementById("stop-btn"),cameraWrapper=document.getElementById("camera-wrapper"),toastEl=document.getElementById("toast"),depositInput=document.getElementById("deposit-input");
+const checkoutBtn=document.getElementById("btn-checkout"),modalCheckoutBtn=document.getElementById("btn-modal-checkout");
+if(typeof Html5Qrcode==="undefined"){banner.textContent="⚠️ QR読み取りライブラリの読み込みに失敗しました。ネット接続を確認してください。";banner.style.display="block";}
+function initAudio(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();}catch(e){}}
+function playBeep(type="item"){if(!audioCtx)return;try{const now=audioCtx.currentTime;if(type==="pay"){[0,0.09].forEach(o=>{const osc=audioCtx.createOscillator(),g=audioCtx.createGain();osc.frequency.value=1400;g.gain.setValueAtTime(0.25,now+o);g.gain.exponentialRampToValueAtTime(0.001,now+o+0.07);osc.connect(g);g.connect(audioCtx.destination);osc.start(now+o);osc.stop(now+o+0.07);});return;}if(type==="checkout"){[880,1108,1318].forEach((f,i)=>{const o=i*0.08,osc=audioCtx.createOscillator(),g=audioCtx.createGain();osc.frequency.value=f;g.gain.setValueAtTime(0.25,now+o);g.gain.exponentialRampToValueAtTime(0.001,now+o+0.12);osc.connect(g);g.connect(audioCtx.destination);osc.start(now+o);osc.stop(now+o+0.12);});return;}const osc=audioCtx.createOscillator(),g=audioCtx.createGain();osc.frequency.value=type==="error"?300:1000;g.gain.setValueAtTime(0.3,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.14);osc.connect(g);g.connect(audioCtx.destination);osc.start(now);osc.stop(now+0.14);}catch(e){}}
+startBtn.addEventListener("click",async()=>{initAudio();if(typeof Html5Qrcode==="undefined"){alert("QRライブラリ未読込です。再読み込みしてください。");return;}if(!html5QrCode)html5QrCode=new Html5Qrcode("reader");try{await html5QrCode.start({facingMode:"environment"},{fps:10,qrbox:{width:220,height:220}},onScanSuccess);isScanning=true;startBtn.style.display="none";stopBtn.style.display="inline-block";}catch(err){alert("カメラ起動エラー: "+err);}});
+stopBtn.addEventListener("click",async()=>{if(html5QrCode&&isScanning){await html5QrCode.stop();isScanning=false;startBtn.style.display="inline-block";stopBtn.style.display="none";}});
+function onScanSuccess(decodedText){if(isCooldown)return;isCooldown=true;const parsed=parseQrData(decodedText);if(parsed&&parsed.kind==="item"){playBeep("item");showFeedback(`${parsed.name}（¥${parsed.price.toLocaleString()}）`,"item");addToCart(parsed.name,parsed.price);}else if(parsed&&parsed.kind==="pay"){playBeep("pay");if(parsed.exact){const total=getTotalPrice();depositInput.value=total;showFeedback(`お預かり（ピッタリ）：¥${total.toLocaleString()}`,"pay");}else{const next=(Number(depositInput.value)||0)+parsed.amount;depositInput.value=next;showFeedback(`お預かり +¥${parsed.amount.toLocaleString()}（計 ¥${next.toLocaleString()}）`,"pay");}updateChange();if(document.getElementById("customer-modal").classList.contains("active"))syncCustomerModal();}else{playBeep("error");showFeedback("無効なQR形式です","error");}setTimeout(()=>{isCooldown=false;},1500);}
+function parseQrData(text){const t=text.trim();if(t.toUpperCase().startsWith("PAY,")){const v=t.split(",")[1].trim().toUpperCase();if(v==="EXACT")return{kind:"pay",exact:true,amount:0};const a=Number(v);return(!isNaN(a)&&a>0)?{kind:"pay",exact:false,amount:a}:null;}if(t.startsWith("{")){try{const o=JSON.parse(t);if(o.type==="pay"&&!isNaN(Number(o.amount)))return{kind:"pay",exact:false,amount:Number(o.amount)};if(o.name&&!isNaN(Number(o.price)))return{kind:"item",name:String(o.name),price:Number(o.price)};}catch(e){return null;}}if(t.includes(",")){const p=t.split(","),n=p[0].trim(),pr=Number(p[1].trim());if(n&&!isNaN(pr))return{kind:"item",name:n,price:pr};}return null;}
+function showFeedback(msg,type="item"){toastEl.textContent=msg;toastEl.style.background=type==="error"?"rgba(217,48,37,0.95)":type==="pay"?"rgba(230,126,0,0.95)":"rgba(30,158,71,0.95)";if(type==="pay")cameraWrapper.classList.add("pay-flash");else if(type==="item")cameraWrapper.classList.add("scan-flash");toastEl.classList.add("show");setTimeout(()=>{toastEl.classList.remove("show");cameraWrapper.classList.remove("scan-flash","pay-flash");},1100);}
+function addToCart(name,price){const ex=cart.find(i=>i.name===name&&i.price===price);if(ex)ex.qty+=1;else cart.unshift({name,price,qty:1});renderCart();}
+function getTotalPrice(){return cart.reduce((s,i)=>s+i.price*i.qty,0);}
+function renderCart(){const listEl=document.getElementById("cart-list"),tpEl=document.getElementById("total-price"),tcEl=document.getElementById("total-count");if(cart.length===0){listEl.innerHTML='<li class="empty-msg">QRコードをかざすとここに商品が追加されます</li>';tpEl.textContent="0";tcEl.textContent="0";updateChange();return;}let tp=0,tc=0;listEl.innerHTML=cart.map((item,idx)=>{const sub=item.price*item.qty;tp+=sub;tc+=item.qty;return`<li class="cart-item"><div class="item-info"><div class="item-name">${escapeHtml(item.name)}</div><div class="item-price">単価 ¥${item.price.toLocaleString()} ／ 小計 ¥${sub.toLocaleString()}</div></div><div class="qty-controls"><button type="button" class="btn-qty" data-idx="${idx}" data-delta="-1">−</button><span class="item-qty">${item.qty}</span><button type="button" class="btn-qty" data-idx="${idx}" data-delta="1">＋</button><button type="button" class="btn-del" data-del="${idx}">削除</button></div></li>`;}).join("");tpEl.textContent=tp.toLocaleString();tcEl.textContent=tc;updateChange();}
+document.getElementById("cart-list").addEventListener("click",(e)=>{const qb=e.target.closest("[data-delta]");if(qb){const idx=Number(qb.dataset.idx);cart[idx].qty+=Number(qb.dataset.delta);if(cart[idx].qty<=0)cart.splice(idx,1);renderCart();return;}const db=e.target.closest("[data-del]");if(db){cart.splice(Number(db.dataset.del),1);renderCart();}});
+function updateChange(){const t=getTotalPrice(),d=Number(depositInput.value)||0,diff=d-t,changeLabelEl=document.getElementById("change-label"),changePriceEl=document.getElementById("change-price"),hasItems=cart.length>0;if(!hasItems){changeLabelEl.textContent="お釣り";changePriceEl.textContent="¥0";changePriceEl.classList.remove("shortage");checkoutBtn.disabled=true;checkoutBtn.textContent="商品未登録";modalCheckoutBtn.disabled=true;modalCheckoutBtn.textContent="商品未登録";}else if(diff<0){const shortage=Math.abs(diff);changeLabelEl.textContent="不足金額";changePriceEl.textContent=`¥${shortage.toLocaleString()}`;changePriceEl.classList.add("shortage");checkoutBtn.disabled=true;checkoutBtn.textContent=`不足 ¥${shortage.toLocaleString()}`;modalCheckoutBtn.disabled=true;modalCheckoutBtn.textContent=`お預かり不足（あと ¥${shortage.toLocaleString()}）`;}else{changeLabelEl.textContent="お釣り";changePriceEl.textContent=`¥${diff.toLocaleString()}`;changePriceEl.classList.remove("shortage");checkoutBtn.disabled=false;checkoutBtn.textContent="✔ 会計確定（売上記録）";modalCheckoutBtn.disabled=false;modalCheckoutBtn.textContent="✔ 会計確定して次へ";}if(document.getElementById("customer-modal").classList.contains("active"))syncCustomerModal();}
+depositInput.addEventListener("input",updateChange);
+document.getElementById("btn-reset-deposit").addEventListener("click",()=>{depositInput.value="";updateChange();});
+document.getElementById("btn-clear-cart").addEventListener("click",()=>{if((cart.length>0||depositInput.value)&&confirm("現在のリストと金額をクリアしますか？")){cart=[];depositInput.value="";renderCart();}});
+document.getElementById("theme-select").addEventListener("change",(e)=>{document.body.className=e.target.value;try{localStorage.setItem(THEME_KEY,e.target.value);}catch(err){}});
+function syncCustomerModal(){const t=getTotalPrice(),c=cart.reduce((s,i)=>s+i.qty,0),d=Number(depositInput.value)||0,diff=d-t,cmChangeLabel=document.getElementById("cm-change-label"),cmChangeEl=document.getElementById("cm-change");document.getElementById("cm-count").textContent=c;document.getElementById("cm-total").textContent=t.toLocaleString();document.getElementById("cm-deposit").textContent=d.toLocaleString();if(diff<0){cmChangeLabel.textContent="不足金額";cmChangeEl.textContent=`¥${Math.abs(diff).toLocaleString()}`;cmChangeEl.classList.add("shortage");}else{cmChangeLabel.textContent="お釣り";cmChangeEl.textContent=`¥${diff.toLocaleString()}`;cmChangeEl.classList.remove("shortage");}document.getElementById("cm-items-list").innerHTML=cart.map(i=>`<div class="cm-item-row"><span>${escapeHtml(i.name)} × ${i.qty}</span><span>¥${(i.price*i.qty).toLocaleString()}</span></div>`).join("");}
+document.getElementById("btn-open-modal").addEventListener("click",()=>{if(cart.length===0){alert("商品がまだ読み取られていません。");return;}syncCustomerModal();document.getElementById("customer-modal").classList.add("active");});
+document.getElementById("btn-close-modal").addEventListener("click",()=>document.getElementById("customer-modal").classList.remove("active"));
+function completeCheckout(){if(cart.length===0){alert("商品が読み取られていません。");return;}const t=getTotalPrice(),d=Number(depositInput.value)||0;if(d<t){initAudio();playBeep("error");alert(`お預かり金額が ¥${(t-d).toLocaleString()} 不足しています。`);return;}const change=d-t;initAudio();playBeep("checkout");const nextTxId=salesHistory.reduce((m,r)=>Math.max(m,r.txId),0)+1,dt=new Date(),nowStr=`${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,"0")}/${String(dt.getDate()).padStart(2,"0")} ${String(dt.getHours()).padStart(2,"0")}:${String(dt.getMinutes()).padStart(2,"0")}:${String(dt.getSeconds()).padStart(2,"0")}`;cart.forEach(i=>salesHistory.push({txId:nextTxId,timestamp:nowStr,name:i.name,price:i.price,qty:i.qty,subtotal:i.price*i.qty,txTotal:t,deposit:d,change:change}));try{localStorage.setItem(STORAGE_KEY,JSON.stringify(salesHistory));}catch(e){}renderSalesHistory();showFeedback(`会計 #${nextTxId} を記録しました（¥${t.toLocaleString()}）`,"item");cart=[];depositInput.value="";renderCart();}
+document.getElementById("btn-checkout").addEventListener("click",completeCheckout);
+document.getElementById("btn-modal-checkout").addEventListener("click",()=>{if((Number(depositInput.value)||0)<getTotalPrice())return;document.getElementById("customer-modal").classList.remove("active");completeCheckout();});
+function renderSalesHistory(){const tbody=document.getElementById("sales-history-body");if(salesHistory.length===0){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:#8E8E93;padding:16px;">まだ売上履歴はありません</td></tr>';document.getElementById("sales-tx-count").textContent="0";document.getElementById("sales-item-count").textContent="0";document.getElementById("sales-total-amount").textContent="0";return;}document.getElementById("sales-tx-count").textContent=new Set(salesHistory.map(r=>r.txId)).size;document.getElementById("sales-item-count").textContent=salesHistory.reduce((s,r)=>s+r.qty,0);document.getElementById("sales-total-amount").textContent=salesHistory.reduce((s,r)=>s+r.subtotal,0).toLocaleString();tbody.innerHTML=[...salesHistory].reverse().map(r=>`<tr><td>#${r.txId}</td><td>${escapeHtml(r.timestamp)}</td><td>${escapeHtml(r.name)}</td><td>¥${r.price.toLocaleString()}</td><td>${r.qty}</td><td>¥${r.subtotal.toLocaleString()}</td><td>${r.txTotal!==undefined?`¥${r.txTotal.toLocaleString()}`:"-"}</td><td>${r.deposit!==undefined?`¥${r.deposit.toLocaleString()}`:"-"}</td><td>${r.change!==undefined?`¥${r.change.toLocaleString()}`:"-"}</td></tr>`).join("");}
+document.getElementById("btn-csv").addEventListener("click",()=>{if(salesHistory.length===0){alert("売上履歴がありません。");return;}const headers=["会計番号","日時","商品名","単価","数量","小計","会計合計","お預かり金額","お釣り"],rows=salesHistory.map(r=>[r.txId,`"${r.timestamp}"`,`"${r.name.replace(/"/g,'""')}"`,r.price,r.qty,r.subtotal,r.txTotal!==undefined?r.txTotal:"",r.deposit!==undefined?r.deposit:"",r.change!==undefined?r.change:""].join(","));const blob=new Blob(["\uFEFF"+[headers.join(","),...rows].join("\r\n")],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`sales_${new Date().toISOString().slice(0,10).replace(/-/g,"")}.csv`;document.body.appendChild(link);link.click();document.body.removeChild(link);URL.revokeObjectURL(url);});
+document.getElementById("btn-clear-history").addEventListener("click",()=>{if(salesHistory.length>0&&confirm("売上履歴をすべて削除しますか？")){salesHistory=[];try{localStorage.removeItem(STORAGE_KEY);}catch(e){}renderSalesHistory();}});
+function escapeHtml(str){return str.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+try{const st=localStorage.getItem(THEME_KEY)||"";document.body.className=st;document.getElementById("theme-select").value=st;const rh=localStorage.getItem(STORAGE_KEY);if(rh)salesHistory=JSON.parse(rh);}catch(e){}
+renderSalesHistory();renderCart();
+</script>
+</body>
+</html>
